@@ -1,5 +1,5 @@
 """Lesson JSON Schema definition."""
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional
 from enum import Enum
 
@@ -61,13 +61,8 @@ class LessonResource(BaseModel):
 class LessonJSON(BaseModel):
     """Complete lesson plan JSON schema."""
 
-    meta: LessonMeta
-    outline: LessonOutline
-    summary: str
-    resources: List[LessonResource] = Field(default_factory=list)
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "meta": {
                     "subject": "数学",
@@ -102,3 +97,9 @@ class LessonJSON(BaseModel):
                 "resources": []
             }
         }
+    )
+
+    meta: LessonMeta
+    outline: LessonOutline
+    summary: str
+    resources: List[LessonResource] = Field(default_factory=list)
