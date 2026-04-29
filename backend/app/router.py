@@ -35,9 +35,14 @@ async def generate_lesson_plan(request: GenerateRequest):
     )
     jobs[job_id] = job
 
-    # TODO: Trigger Celery task for async processing
-    # from celery.tasks import start_generation_pipeline
-    # start_generation_pipeline.delay(job_id, request.dict())
+    # Trigger Celery task for async processing
+    try:
+        from celery.tasks import start_generation_pipeline
+        start_generation_pipeline.delay(job_id, request.model_dump())
+    except Exception as e:
+        # If Celery is not available, log the error but don't fail the request
+        # The job will be created but won't be processed automatically
+        print(f"Warning: Could not trigger Celery task: {e}")
 
     return GenerateResponse(job_id=job_id, message="任务已创建，正在处理")
 
