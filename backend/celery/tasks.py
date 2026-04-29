@@ -2,8 +2,50 @@
 from celery import shared_task
 from celery.config import celery_app
 from models.job import TaskStatus, ProductType
-from app.websocket import push_progress
 import asyncio
+
+
+def _run_async(coro):
+    """Run async coroutine in Celery worker context."""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # If loop is already running, use nest_asyncio
+            import nest_asyncio
+            nest_asyncio.apply()
+            return loop.run_until_complete(coro)
+        return loop.run_until_complete(coro)
+    except RuntimeError:
+        # No event loop, create new one
+        return asyncio.run(coro)
+
+
+def _update_progress_sync(job_id: str, task_type: ProductType, status: TaskStatus,
+                          progress: int, message: str = None, error: str = None,
+                          download_url: str = None):
+    """Update progress synchronously by storing in job state.
+
+    This is a sync wrapper that updates job status in memory.
+    WebSocket clients will receive updates via polling or
+    when they connect/reconnect.
+    """
+    from app.router import jobs
+    if job_id in jobs:
+        job = jobs[job_id]
+        for i, task in enumerate(job.tasks):
+            if task.type == task_type:
+                job.tasks[i] = task.__class__(
+                    type=task_type,
+                    status=status,
+                    progress=progress,
+                    message=message,
+                    error=error,
+                    download_url=download_url,
+                )
+                break
+        job.status = status
+        from datetime import datetime
+        job.updated_at = datetime.utcnow()
 
 
 @shared_task(bind=True)
@@ -27,79 +69,79 @@ def start_generation_pipeline(self, job_id: str, request_data: dict):
 @shared_task(bind=True)
 def generate_lesson_task(self, job_id: str, request_data: dict) -> dict:
     """Generate lesson plan JSON via LLM."""
-    asyncio.run(push_progress(
+    _update_progress_sync(
         job_id, ProductType.lesson, TaskStatus.in_progress, 10,
-        "正在调用 LLM 生成教案..."
-    ))
+        message="正在调用 LLM 生成教案..."
+    )
 
     try:
         from services.lesson import LessonGenerator
         generator = LessonGenerator()
         lesson_json = generator.generate(request_data)
 
-        asyncio.run(push_progress(
+        _update_progress_sync(
             job_id, ProductType.lesson, TaskStatus.completed, 100,
-            "教案生成完成",
+            message="教案生成完成",
             download_url=f"/api/download/lesson/{job_id}"
-        ))
+        )
 
         return lesson_json
 
     except Exception as e:
-        asyncio.run(push_progress(
+        _update_progress_sync(
             job_id, ProductType.lesson, TaskStatus.failed, 0,
             error=str(e)
-        ))
+        )
         return None
 
 
 @shared_task(bind=True)
 def generate_tts_task(self, job_id: str, lesson_json: dict):
     """Generate TTS audio from lesson content."""
-    asyncio.run(push_progress(
+    _update_progress_sync(
         job_id, ProductType.tts, TaskStatus.in_progress, 10,
-        "正在合成语音..."
-    ))
+        message="正在合成语音..."
+    )
 
     try:
         from services.voice import VoiceGenerator
         generator = VoiceGenerator()
         generator.generate(lesson_json)
 
-        asyncio.run(push_progress(
+        _update_progress_sync(
             job_id, ProductType.tts, TaskStatus.completed, 100,
-            "语音合成完成",
+            message="语音合成完成",
             download_url=f"/api/download/tts/{job_id}"
-        ))
+        )
 
     except Exception as e:
-        asyncio.run(push_progress(
+        _update_progress_sync(
             job_id, ProductType.tts, TaskStatus.failed, 0,
             error=str(e)
-        ))
+        )
 
 
 @shared_task(bind=True)
 def generate_ppt_task(self, job_id: str, lesson_json: dict):
     """Generate PPT from lesson content."""
-    asyncio.run(push_progress(
+    _update_progress_sync(
         job_id, ProductType.ppt, TaskStatus.in_progress, 10,
-        "正在生成 PPT..."
-    ))
+        message="正在生成 PPT..."
+    )
 
     try:
         from services.ppt import PPTGenerator
         generator = PPTGenerator()
         generator.generate(lesson_json)
 
-        asyncio.run(push_progress(
+        _update_progress_sync(
             job_id, ProductType.ppt, TaskStatus.completed, 100,
-            "PPT生成完成",
+            message="PPT生成完成",
             download_url=f"/api/download/ppt/{job_id}"
-        ))
+        )
 
     except Exception as e:
-        asyncio.run(push_progress(
+        _update_progress_sync(
             job_id, ProductType.ppt, TaskStatus.failed, 0,
             error=str(e)
-        ))
+        )
