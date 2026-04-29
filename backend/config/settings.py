@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     app_name: str = "YaeTeaching API"
     debug: bool = False
 
+    # Storage
+    storage_path: str = "/tmp/yaeteaching"
+
     class Config:
         env_file = ".env"
 
