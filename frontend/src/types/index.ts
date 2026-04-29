@@ -48,3 +48,41 @@ export interface GenerateResponse {
   jobId: string;
   message: string;
 }
+
+// 教案版本类型
+export interface LessonVersion {
+  version: number;
+  lessonJson: object;
+  createdAt: string;
+  description?: string;
+}
+
+// 教案版本列表响应
+export interface LessonVersionsResponse {
+  jobId: string;
+  versions: LessonVersion[];
+  currentVersion: number;
+  maxVersions: number;
+}
+
+// 保存教案请求
+export interface SaveLessonRequest {
+  jobId: string;
+  lessonJson: object;
+  description?: string;
+}
+
+// 重新生成请求
+export interface RegenerateRequest {
+  jobId: string;
+  sections: number[];
+}
+
+// 章节重新生成状态
+export interface SectionRegenerationStatus {
+  sectionId: number;
+  title: string;
+  status: TaskStatus;
+  progress: number;
+  error?: string;
+}

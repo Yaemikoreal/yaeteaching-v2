@@ -2,3 +2,8 @@ export { GenerateForm } from './GenerateForm';
 export { ProgressDisplay } from './ProgressDisplay';
 export { ProductDownload } from './ProductDownload';
 export { LessonPreview } from './LessonPreview';
+export { LessonPlanEditor } from './LessonPlanEditor';
+export type { LessonPlan, ChangedSections } from './LessonPlanEditor';
+export { ChangeIndicator } from './ChangeIndicator';
+export { VersionHistory } from './VersionHistory';
+export { RegenerationProgress } from './RegenerationProgress';
