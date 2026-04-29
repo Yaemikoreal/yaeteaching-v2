@@ -1,13 +1,17 @@
 # YaeTeaching Agent 工作指南
 
-## 📁 统一工作目录
+## 📁 工作目录说明
 
-**所有 Agent 必须在以下目录工作：**
+**Multica 自动管理工作目录：**
 ```
-~/openclawwork/yaeteaching/
+~/multica_workspaces/{workspace_id}/{task_id}/workdir/yaeteaching-v2/
 ```
 
-**禁止**在 Multica 临时工作目录 (`~/multica_workspaces/...`) 直接修改代码。
+每个任务会 checkout 一个独立的 git worktree，分支名为 `agent/agent/{task_id}`。
+
+**无需手动指定工作目录** — Multica Daemon 会自动处理 repo checkout。
+
+**本地开发参考目录**（仅供人类查看）：`~/openclawwork/yaeteaching/`
 
 ---
 
@@ -48,23 +52,25 @@ yaeteaching/
 
 ---
 
-## 🔄 工作流程
+## 🔄 工作流程（Multica 自动化）
 
-### 1. 开始任务前
+### 1. 任务分配
+- Issue 分配给 Agent 后，Multica 自动 checkout repo 到任务工作目录
+
+### 2. Agent 执行
+- 在独立的 worktree 分支工作：`agent/agent/{task_id}`
+- 修改代码、测试、提交
+
+### 3. 完成后
+- 代码提交到任务分支
+- 创建 PR 合并到 main
+- Issue 状态自动变为 done
+
+### 4. 人类开发（可选）
 ```bash
 cd ~/openclawwork/yaeteaching
 git pull origin main
-```
-
-### 2. 开发时
-- 在对应目录修改代码
-- 遵循各模块的代码规范
-- 及时提交到本地分支
-
-### 3. 完成任务后
-```bash
-git add .
-git commit -m "[YAE-XX] 任务描述"
+# 开发...
 git push origin main
 ```
 
@@ -93,7 +99,8 @@ git push origin main
 
 ## ⚠️ 重要提醒
 
-1. **所有代码修改必须在 `~/openclawwork/yaeteaching/` 进行**
-2. **Multica 工作目录 (`~/multica_workspaces/...`) 仅用于读取上下文**
-3. **完成后及时 push 到 GitHub**
-4. **保持 README 和 AGENTS.md 更新**
+1. **Multica 自动 checkout repo 到任务目录**，无需手动操作
+2. **每个任务在独立 worktree 分支工作**，避免冲突
+3. **完成后代码提交到任务分支**，通过 PR 合并
+4. **人类可直接在 `~/openclawwork/yaeteaching/` 开发**，push 到 main
+5. **保持 README 和 AGENTS.md 更新**
