@@ -1,174 +1,259 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { ChangeIndicator } from './ChangeIndicator';
 
-interface Section {
-  section_id: number;
-  title: string;
-  content: string;
-  teaching_points?: string[];
-  examples?: string[];
-  media_hint?: {
-    slide_type?: string;
+// Lesson Plan types (matching backend schema)
+export interface LessonPlan {
+  meta: {
+    title: string;
+    subject: string;
+    grade: string;
+    duration_minutes: number;
+    style?: string;
   };
-}
-
-interface LessonMeta {
-  title: string;
-  subject: string;
-  grade: string;
-  duration_minutes: number;
-}
-
-interface LessonPlan {
-  meta: LessonMeta;
-  outline: Section[];
-  summary?: {
+  outline: Array<{
+    section_id: number;
+    title: string;
+    content: string;
+    teaching_points: string[];
+    examples: string[];
+    media_hint?: {
+      slide_type?: string;
+      voice_style?: string;
+      duration_hint?: number;
+    };
+  }>;
+  summary: {
     key_points: string[];
     homework: string;
     next_preview: string;
+    resources?: Array<{
+      type: string;
+      url?: string;
+      description: string;
+    }>;
   };
 }
 
 interface LessonPlanEditorProps {
-  lesson: LessonPlan;
-  onSave: (lesson: LessonPlan) => void;
-  onRegenerateSections: (modifiedSectionIds: number[]) => void;
-  disabled?: boolean;
+  jobId: string;
+  initialLesson: LessonPlan;
+  onSave: (lesson: LessonPlan, changes: ChangedSections) => Promise<void>;
+  onRegenerate: (sections: number[]) => Promise<void>;
 }
 
-const SLIDE_TYPES = ['title', 'knowledge', 'example', 'summary'];
+// Track which sections have been modified
+export interface ChangedSections {
+  meta: boolean;
+  sections: Set<number>;
+  summary: boolean;
+}
+
+// Deep clone for comparison
+function deepClone<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj));
+}
+
+// Detect changes between original and edited lesson
+function detectChanges(original: LessonPlan, edited: LessonPlan): ChangedSections {
+  const changes: ChangedSections = {
+    meta: false,
+    sections: new Set(),
+    summary: false,
+  };
+
+  // Check meta
+  if (
+    original.meta.title !== edited.meta.title ||
+    original.meta.subject !== edited.meta.subject ||
+    original.meta.grade !== edited.meta.grade ||
+    original.meta.duration_minutes !== edited.meta.duration_minutes
+  ) {
+    changes.meta = true;
+  }
+
+  // Check sections
+  original.outline.forEach((section, index) => {
+    const editedSection = edited.outline[index];
+    if (!editedSection) {
+      changes.sections.add(section.section_id);
+      return;
+    }
+    if (
+      section.title !== editedSection.title ||
+      section.content !== editedSection.content ||
+      JSON.stringify(section.teaching_points) !== JSON.stringify(editedSection.teaching_points) ||
+      JSON.stringify(section.examples) !== JSON.stringify(editedSection.examples)
+    ) {
+      changes.sections.add(section.section_id);
+    }
+  });
+
+  // Check summary
+  if (
+    JSON.stringify(original.summary.key_points) !== JSON.stringify(edited.summary.key_points) ||
+    original.summary.homework !== edited.summary.homework ||
+    original.summary.next_preview !== edited.summary.next_preview
+  ) {
+    changes.summary = true;
+  }
+
+  return changes;
+}
 
 export function LessonPlanEditor({
-  lesson,
+  initialLesson,
   onSave,
-  onRegenerateSections,
-  disabled = false,
+  onRegenerate,
 }: LessonPlanEditorProps) {
+  const [lesson, setLesson] = useState<LessonPlan>(deepClone(initialLesson));
+  const [originalLesson] = useState<LessonPlan>(deepClone(initialLesson));
   const [editMode, setEditMode] = useState<'structured' | 'json'>('structured');
-  const [editedLesson, setEditedLesson] = useState<LessonPlan>(lesson);
-  const [jsonText, setJsonText] = useState<string>(() => JSON.stringify(lesson, null, 2));
-  const [jsonError, setJsonError] = useState<string | null>(null);
+  const [jsonText, setJsonText] = useState<string>(JSON.stringify(initialLesson, null, 2));
+  const [isSaving, setIsSaving] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
-  // Track which sections have been modified
-  const modifiedSections = useMemo(() => {
-    const modified: Set<number> = new Set();
+  // Track changes
+  const changes = detectChanges(originalLesson, lesson);
+  const hasChanges = changes.meta || changes.sections.size > 0 || changes.summary;
 
-    // Compare outline sections
-    lesson.outline.forEach((originalSection, idx) => {
-      const editedSection = editedLesson.outline[idx];
-      if (!editedSection) return;
-
-      if (
-        originalSection.title !== editedSection.title ||
-        originalSection.content !== editedSection.content ||
-        JSON.stringify(originalSection.teaching_points) !== JSON.stringify(editedSection.teaching_points) ||
-        JSON.stringify(originalSection.examples) !== JSON.stringify(editedSection.examples) ||
-        originalSection.media_hint?.slide_type !== editedSection.media_hint?.slide_type
-      ) {
-        modified.add(originalSection.section_id);
-      }
-    });
-
-    // Compare meta
-    if (
-      lesson.meta.title !== editedLesson.meta.title ||
-      lesson.meta.subject !== editedLesson.meta.subject ||
-      lesson.meta.grade !== editedLesson.meta.grade ||
-      lesson.meta.duration_minutes !== editedLesson.meta.duration_minutes
-    ) {
-      // Meta changes affect all sections, but we mark as meta modification
+  // Sync JSON text when lesson changes in structured mode
+  useEffect(() => {
+    if (editMode === 'structured') {
+      setJsonText(JSON.stringify(lesson, null, 2));
     }
+  }, [lesson, editMode]);
 
-    return modified;
-  }, [lesson, editedLesson]);
-
-  const handleSectionChange = useCallback((
-    sectionId: number,
-    field: keyof Section,
-    value: string | string[]
-  ) => {
-    setEditedLesson(prev => {
-      const newOutline = prev.outline.map(section => {
-        if (section.section_id === sectionId) {
-          return { ...section, [field]: value };
-        }
-        return section;
-      });
-      return { ...prev, outline: newOutline };
-    });
-  }, []);
-
-  const handleMetaChange = useCallback((
-    field: keyof LessonMeta,
-    value: string | number
-  ) => {
-    setEditedLesson(prev => ({
-      ...prev,
-      meta: { ...prev.meta, [field]: value },
-    }));
-  }, []);
-
-  const handleSlideTypeChange = useCallback((
-    sectionId: number,
-    slideType: string
-  ) => {
-    setEditedLesson(prev => {
-      const newOutline = prev.outline.map(section => {
-        if (section.section_id === sectionId) {
-          return {
-            ...section,
-            media_hint: { ...section.media_hint, slide_type: slideType },
-          };
-        }
-        return section;
-      });
-      return { ...prev, outline: newOutline };
-    });
-  }, []);
-
-  const handleJsonChange = useCallback((text: string) => {
+  // Handle JSON edit
+  const handleJsonEdit = useCallback((text: string) => {
     setJsonText(text);
     try {
       const parsed = JSON.parse(text) as LessonPlan;
-      // Validate structure
-      if (!parsed.meta || !parsed.outline) {
-        throw new Error('缺少必要字段: meta 或 outline');
-      }
-      setEditedLesson(parsed);
-      setJsonError(null);
-    } catch (e) {
-      setJsonError(e instanceof Error ? e.message : 'JSON 格式错误');
+      setLesson(parsed);
+      setSaveError(null);
+    } catch {
+      // Invalid JSON, keep text but don't update lesson
+      setSaveError('JSON 格式错误');
     }
   }, []);
 
-  const handleSave = useCallback(() => {
-    if (editMode === 'json' && jsonError) {
-      return;
-    }
-    onSave(editMode === 'json' ? JSON.parse(jsonText) : editedLesson);
-  }, [editMode, jsonError, jsonText, editedLesson, onSave]);
+  // Update section field
+  const updateSection = useCallback((
+    sectionId: number,
+    field: 'title' | 'content',
+    value: string
+  ) => {
+    setLesson(prev => ({
+      ...prev,
+      outline: prev.outline.map(section =>
+        section.section_id === sectionId
+          ? { ...section, [field]: value }
+          : section
+      ),
+    }));
+  }, []);
 
-  const handleRegenerate = useCallback(() => {
-    if (modifiedSections.size > 0) {
-      onRegenerateSections(Array.from(modifiedSections));
-    }
-  }, [modifiedSections, onRegenerateSections]);
+  // Update teaching points for a section
+  const updateTeachingPoints = useCallback((
+    sectionId: number,
+    points: string[]
+  ) => {
+    setLesson(prev => ({
+      ...prev,
+      outline: prev.outline.map(section =>
+        section.section_id === sectionId
+          ? { ...section, teaching_points: points }
+          : section
+      ),
+    }));
+  }, []);
 
-  const isModified = modifiedSections.size > 0;
+  // Update examples for a section
+  const updateExamples = useCallback((
+    sectionId: number,
+    examples: string[]
+  ) => {
+    setLesson(prev => ({
+      ...prev,
+      outline: prev.outline.map(section =>
+        section.section_id === sectionId
+          ? { ...section, examples }
+          : section
+      ),
+    }));
+  }, []);
+
+  // Update summary
+  const updateSummary = useCallback((
+    field: 'key_points' | 'homework' | 'next_preview',
+    value: string | string[]
+  ) => {
+    setLesson(prev => ({
+      ...prev,
+      summary: {
+        ...prev.summary,
+        [field]: value,
+      },
+    }));
+  }, []);
+
+  // Update meta
+  const updateMeta = useCallback((
+    field: 'title' | 'subject' | 'grade' | 'duration_minutes',
+    value: string | number
+  ) => {
+    setLesson(prev => ({
+      ...prev,
+      meta: {
+        ...prev.meta,
+        [field]: value,
+      },
+    }));
+  }, []);
+
+  // Save lesson
+  const handleSave = useCallback(async () => {
+    if (!hasChanges) return;
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await onSave(lesson, changes);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : '保存失败');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [lesson, changes, hasChanges, onSave]);
+
+  // Regenerate modified sections
+  const handleRegenerate = useCallback(async () => {
+    const sectionIds = Array.from(changes.sections);
+    if (sectionIds.length === 0) return;
+    setIsRegenerating(true);
+    setRegenerateError(null);
+    try {
+      await onRegenerate(sectionIds);
+    } catch (err) {
+      setRegenerateError(err instanceof Error ? err.message : '重新生成失败');
+    } finally {
+      setIsRegenerating(false);
+    }
+  }, [changes.sections, onRegenerate]);
 
   return (
-    <div className="w-full max-w-2xl space-y-4">
-      {/* Mode toggle */}
+    <div className="w-full space-y-4">
+      {/* Header with mode toggle */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-800">教案编辑</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex gap-2">
           <button
             onClick={() => setEditMode('structured')}
-            disabled={disabled}
-            className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+            className={`px-3 py-1 rounded text-sm ${
               editMode === 'structured'
-                ? 'bg-blue-100 text-blue-700 font-medium'
+                ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
@@ -176,10 +261,9 @@ export function LessonPlanEditor({
           </button>
           <button
             onClick={() => setEditMode('json')}
-            disabled={disabled}
-            className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+            className={`px-3 py-1 rounded text-sm ${
               editMode === 'json'
-                ? 'bg-blue-100 text-blue-700 font-medium'
+                ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
@@ -188,232 +272,212 @@ export function LessonPlanEditor({
         </div>
       </div>
 
-      {/* Modified indicator */}
-      {isModified && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-yellow-50 rounded-lg">
-          <span className="text-sm text-yellow-700">
-            已修改 {modifiedSections.size} 个章节
-          </span>
-          <span className="text-xs text-yellow-600">
-            (ID: {Array.from(modifiedSections).join(', ')})
-          </span>
+      {/* Changes indicator */}
+      {hasChanges && (
+        <ChangeIndicator changes={changes} />
+      )}
+
+      {/* Error messages */}
+      {saveError && (
+        <div className="rounded bg-red-50 p-3 text-sm text-red-600">
+          {saveError}
+        </div>
+      )}
+      {regenerateError && (
+        <div className="rounded bg-red-50 p-3 text-sm text-red-600">
+          {regenerateError}
         </div>
       )}
 
       {/* Editor content */}
-      {editMode === 'structured' ? (
-        <div className="space-y-4">
-          {/* Meta section */}
-          <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
-            <h3 className="text-md font-semibold text-gray-700">基本信息</h3>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <label className="text-sm text-gray-600">课程标题</label>
-                <input
-                  type="text"
-                  value={editedLesson.meta.title}
-                  onChange={(e) => handleMetaChange('title', e.target.value)}
-                  disabled={disabled}
-                  className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
-                />
+      <div className="rounded-lg border border-gray-200 bg-white p-4">
+        {editMode === 'structured' ? (
+          <div className="space-y-4">
+            {/* Meta section */}
+            <div className={`border-b pb-4 ${changes.meta ? 'bg-yellow-50 -mx-4 px-4' : ''}`}>
+              <h3 className="text-md font-semibold mb-2">
+                基本信息
+                {changes.meta && <span className="text-xs text-yellow-600 ml-2">(已修改)</span>}
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">标题</label>
+                  <input
+                    type="text"
+                    value={lesson.meta.title}
+                    onChange={(e) => updateMeta('title', e.target.value)}
+                    className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">学科</label>
+                  <input
+                    type="text"
+                    value={lesson.meta.subject}
+                    onChange={(e) => updateMeta('subject', e.target.value)}
+                    className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">年级</label>
+                  <input
+                    type="text"
+                    value={lesson.meta.grade}
+                    onChange={(e) => updateMeta('grade', e.target.value)}
+                    className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">时长(分钟)</label>
+                  <input
+                    type="number"
+                    value={lesson.meta.duration_minutes}
+                    onChange={(e) => updateMeta('duration_minutes', parseInt(e.target.value) || 0)}
+                    className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm"
+                  />
+                </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-sm text-gray-600">学科</label>
-                <input
-                  type="text"
-                  value={editedLesson.meta.subject}
-                  onChange={(e) => handleMetaChange('subject', e.target.value)}
-                  disabled={disabled}
-                  className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm text-gray-600">年级</label>
-                <input
-                  type="text"
-                  value={editedLesson.meta.grade}
-                  onChange={(e) => handleMetaChange('grade', e.target.value)}
-                  disabled={disabled}
-                  className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm text-gray-600">时长(分钟)</label>
-                <input
-                  type="number"
-                  value={editedLesson.meta.duration_minutes}
-                  onChange={(e) => handleMetaChange('duration_minutes', Number(e.target.value))}
-                  disabled={disabled}
-                  className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
-                />
+            </div>
+
+            {/* Outline sections */}
+            <div className="space-y-3">
+              <h3 className="text-md font-semibold">课程大纲</h3>
+              {lesson.outline.map((section) => (
+                <div
+                  key={section.section_id}
+                  className={`border rounded p-3 ${
+                    changes.sections.has(section.section_id)
+                      ? 'border-yellow-400 bg-yellow-50'
+                      : 'border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm font-medium text-gray-500">
+                      {section.section_id}.
+                    </span>
+                    <input
+                      type="text"
+                      value={section.title}
+                      onChange={(e) => updateSection(section.section_id, 'title', e.target.value)}
+                      className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm font-medium"
+                    />
+                    {changes.sections.has(section.section_id) && (
+                      <span className="text-xs text-yellow-600">(已修改)</span>
+                    )}
+                  </div>
+                  <textarea
+                    value={section.content}
+                    onChange={(e) => updateSection(section.section_id, 'content', e.target.value)}
+                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm min-h-20"
+                    placeholder="章节内容"
+                  />
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">教学要点</label>
+                      <textarea
+                        value={section.teaching_points.join('\n')}
+                        onChange={(e) => updateTeachingPoints(
+                          section.section_id,
+                          e.target.value.split('\n').filter(Boolean)
+                        )}
+                        className="w-full rounded border border-gray-300 px-2 py-1 text-xs"
+                        placeholder="每行一个要点"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">例子</label>
+                      <textarea
+                        value={section.examples.join('\n')}
+                        onChange={(e) => updateExamples(
+                          section.section_id,
+                          e.target.value.split('\n').filter(Boolean)
+                        )}
+                        className="w-full rounded border border-gray-300 px-2 py-1 text-xs"
+                        placeholder="每行一个例子"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Summary section */}
+            <div className={`border-t pt-4 ${changes.summary ? 'bg-yellow-50 -mx-4 px-4' : ''}`}>
+              <h3 className="text-md font-semibold mb-2">
+                总结
+                {changes.summary && <span className="text-xs text-yellow-600 ml-2">(已修改)</span>}
+              </h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">核心要点</label>
+                  <textarea
+                    value={lesson.summary.key_points.join('\n')}
+                    onChange={(e) => updateSummary('key_points', e.target.value.split('\n').filter(Boolean))}
+                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                    placeholder="每行一个要点"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">作业</label>
+                  <input
+                    type="text"
+                    value={lesson.summary.homework}
+                    onChange={(e) => updateSummary('homework', e.target.value)}
+                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">下节预告</label>
+                  <input
+                    type="text"
+                    value={lesson.summary.next_preview}
+                    onChange={(e) => updateSummary('next_preview', e.target.value)}
+                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                  />
+                </div>
               </div>
             </div>
           </div>
-
-          {/* Outline sections */}
-          {editedLesson.outline.map((section) => (
-            <div
-              key={section.section_id}
-              className={`rounded-lg border p-4 space-y-3 ${
-                modifiedSections.has(section.section_id)
-                  ? 'border-yellow-300 bg-yellow-50'
-                  : 'border-gray-200 bg-white'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-md font-semibold text-gray-700">
-                  章节 {section.section_id}
-                </h3>
-                {modifiedSections.has(section.section_id) && (
-                  <span className="text-xs text-yellow-600 font-medium">
-                    已修改
-                  </span>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <div className="space-y-1">
-                  <label className="text-sm text-gray-600">标题</label>
-                  <input
-                    type="text"
-                    value={section.title}
-                    onChange={(e) => handleSectionChange(section.section_id, 'title', e.target.value)}
-                    disabled={disabled}
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-sm text-gray-600">内容</label>
-                  <textarea
-                    value={section.content}
-                    onChange={(e) => handleSectionChange(section.section_id, 'content', e.target.value)}
-                    disabled={disabled}
-                    rows={3}
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
-                  />
-                </div>
-
-                {section.teaching_points && section.teaching_points.length > 0 && (
-                  <div className="space-y-1">
-                    <label className="text-sm text-gray-600">教学要点</label>
-                    {section.teaching_points.map((point, i) => (
-                      <input
-                        key={i}
-                        type="text"
-                        value={point}
-                        onChange={(e) => {
-                          const newPoints = [...(section.teaching_points || [])];
-                          newPoints[i] = e.target.value;
-                          handleSectionChange(section.section_id, 'teaching_points', newPoints);
-                        }}
-                        disabled={disabled}
-                        className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
-                      />
-                    ))}
-                  </div>
-                )}
-
-                <div className="space-y-1">
-                  <label className="text-sm text-gray-600">幻灯片类型</label>
-                  <select
-                    value={section.media_hint?.slide_type || 'knowledge'}
-                    onChange={(e) => handleSlideTypeChange(section.section_id, e.target.value)}
-                    disabled={disabled}
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
-                  >
-                    {SLIDE_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {type === 'title' ? '标题页' :
-                         type === 'knowledge' ? '知识点页' :
-                         type === 'example' ? '例题页' : '总结页'}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {/* Summary section */}
-          {editedLesson.summary && (
-            <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
-              <h3 className="text-md font-semibold text-gray-700">总结</h3>
-              <div className="space-y-2">
-                <div className="space-y-1">
-                  <label className="text-sm text-gray-600">核心要点</label>
-                  <textarea
-                    value={editedLesson.summary.key_points.join('\n')}
-                    onChange={(e) => {
-                      const points = e.target.value.split('\n').filter(p => p.trim());
-                      setEditedLesson(prev => ({
-                        ...prev,
-                        summary: { ...prev.summary!, key_points: points },
-                      }));
-                    }}
-                    disabled={disabled}
-                    rows={3}
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm text-gray-600">作业</label>
-                  <input
-                    type="text"
-                    value={editedLesson.summary.homework}
-                    onChange={(e) => {
-                      setEditedLesson(prev => ({
-                        ...prev,
-                        summary: { ...prev.summary!, homework: e.target.value },
-                      }));
-                    }}
-                    disabled={disabled}
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-2">
+        ) : (
+          /* JSON mode */
           <textarea
             value={jsonText}
-            onChange={(e) => handleJsonChange(e.target.value)}
-            disabled={disabled}
-            rows={20}
-            className={`w-full rounded border font-mono text-sm px-3 py-2 focus:outline-none ${
-              jsonError
-                ? 'border-red-300 bg-red-50'
-                : 'border-gray-300 focus:border-blue-500'
-            } disabled:bg-gray-100`}
+            onChange={(e) => handleJsonEdit(e.target.value)}
+            className="w-full min-h-96 rounded border border-gray-300 px-3 py-2 font-mono text-sm"
+            spellCheck={false}
           />
-          {jsonError && (
-            <p className="text-sm text-red-600">{jsonError}</p>
+        )}
+      </div>
+
+      {/* Action buttons */}
+      {hasChanges && (
+        <div className="flex gap-3">
+          <button
+            onClick={handleSave}
+            disabled={isSaving || !hasChanges}
+            className={`px-4 py-2 rounded font-medium ${
+              isSaving || !hasChanges
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
+          >
+            {isSaving ? '保存中...' : '保存'}
+          </button>
+          {changes.sections.size > 0 && (
+            <button
+              onClick={handleRegenerate}
+              disabled={isRegenerating}
+              className={`px-4 py-2 rounded font-medium ${
+                isRegenerating
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-green-600 text-white hover:bg-green-700'
+              }`}
+            >
+              {isRegenerating ? '重新生成中...' : `重新生成 (${changes.sections.size} 章节)`}
+            </button>
           )}
         </div>
       )}
-
-      {/* Actions */}
-      <div className="flex items-center justify-between gap-3 pt-4">
-        <button
-          onClick={handleSave}
-          disabled={disabled || (editMode === 'json' && !!jsonError)}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-white font-medium transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          保存修改
-        </button>
-
-        {isModified && (
-          <button
-            onClick={handleRegenerate}
-            disabled={disabled}
-            className="rounded-lg bg-green-600 px-4 py-2 text-white font-medium transition-colors hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            重新生成修改的章节
-          </button>
-        )}
-      </div>
     </div>
   );
 }
