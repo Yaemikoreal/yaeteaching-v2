@@ -29,9 +29,12 @@
 # /backend/config/
 # /frontend/config/
 
-# 测试文件 - 可自由合并
-# /backend/tests/
-# /frontend/tests/
+# 测试文件 - 缇宝负责
+/backend/tests/ @Yaemikoreal
+/frontend/tests/ @Yaemikoreal
+
+# CI/CD 配置 - 缇宝负责
+/.github/workflows/ @Yaemikoreal
 
 # 静态资源 - 可自由合并
 # /frontend/public/
