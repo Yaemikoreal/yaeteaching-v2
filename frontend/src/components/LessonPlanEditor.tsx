@@ -28,12 +28,12 @@ export interface LessonPlan {
     key_points: string[];
     homework: string;
     next_preview: string;
+    resources?: Array<{
+      type: string;
+      url?: string;
+      description: string;
+    }>;
   };
-  resources?: Array<{
-    type: string;
-    url?: string;
-    description: string;
-  }>;
 }
 
 interface LessonPlanEditorProps {
