@@ -1,18 +1,37 @@
 # CODEOWNERS - 代码审查权限分配
-# 所有代码变更需要审查 approve 后才能合并
+# 只对核心业务逻辑强制审查，其他文件可自由合并
 
-# 后端代码
-/backend/ @Yaemikoreal
+# ============================================
+# 强制审查：核心业务代码
+# ============================================
 
-# 前端代码
-/frontend/ @Yaemikoreal
+# 后端核心业务逻辑
+/backend/app/ @Yaemikoreal
+/backend/services/ @Yaemikoreal
 
-# CI/CD 配置
-/.github/workflows/ @Yaemikoreal
+# 前端核心业务代码
+/frontend/src/app/ @Yaemikoreal
+/frontend/src/components/ @Yaemikoreal
+/frontend/src/hooks/ @Yaemikoreal
 
-# 根目录文档和配置
-/README.md @Yaemikoreal
-/AGENTS.md @Yaemikoreal
+# ============================================
+# 不强制审查：文档、配置、测试、静态资源
+# ============================================
 
-# 默认：所有未匹配的文件
-* @Yaemikoreal
+# 文档 - 可自由合并
+# /README.md
+# /AGENTS.md
+# /backend/README.md
+# /frontend/README.md
+
+# 配置文件 - 可自由合并
+# /.github/
+# /backend/config/
+# /frontend/config/
+
+# 测试文件 - 可自由合并
+# /backend/tests/
+# /frontend/tests/
+
+# 静态资源 - 可自由合并
+# /frontend/public/
