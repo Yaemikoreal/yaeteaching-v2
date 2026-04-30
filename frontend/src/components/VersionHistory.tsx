@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import type { LessonPlan } from './LessonPlanEditor';
 
 interface LessonVersion {
   id: string;
   createdAt: string;
   label?: string;
-  lessonJson: object;
+  lessonJson: LessonPlan;
 }
 
 interface VersionHistoryProps {
