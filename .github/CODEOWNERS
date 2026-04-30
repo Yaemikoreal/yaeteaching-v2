@@ -1,0 +1,18 @@
+# CODEOWNERS - 代码审查权限分配
+# 所有代码变更需要审查 approve 后才能合并
+
+# 后端代码
+/backend/ @Yaemikoreal
+
+# 前端代码
+/frontend/ @Yaemikoreal
+
+# CI/CD 配置
+/.github/workflows/ @Yaemikoreal
+
+# 根目录文档和配置
+/README.md @Yaemikoreal
+/AGENTS.md @Yaemikoreal
+
+# 默认：所有未匹配的文件
+* @Yaemikoreal
