@@ -1,14 +1,26 @@
 """PPT generation service using python-pptx."""
+import os
+import uuid
+from pathlib import Path
 from pptx import Presentation
 from config.settings import settings
 from models.lesson import SlideType
+
+# Storage directory for PPT files
+STORAGE_DIR = Path(os.getenv("STORAGE_DIR", "/tmp/yaeteaching/storage"))
+PPT_DIR = STORAGE_DIR / "ppt"
 
 
 class PPTGenerator:
     """Generate PowerPoint from lesson content."""
 
     def __init__(self):
+        self._ensure_storage_dir()
         self.template_path = settings.minio_bucket  # TODO: actual template storage
+
+    def _ensure_storage_dir(self):
+        """Ensure storage directory exists."""
+        PPT_DIR.mkdir(parents=True, exist_ok=True)
 
     def generate(self, lesson_json: dict) -> str:
         """Generate PPT file from lesson JSON.
@@ -34,18 +46,28 @@ class PPTGenerator:
         # Main sections
         for section in outline.get("main_sections", []):
             slide_type = section.get("media_hint", {}).get("slide_type", "knowledge")
-            self._add_content_slide(prs, section, SlideType(slide_type) if slide_type else SlideType.knowledge)
+            try:
+                st = SlideType(slide_type)
+            except ValueError:
+                st = SlideType.knowledge
+            self._add_content_slide(prs, section, st)
 
         # Conclusion
         conclusion = outline.get("conclusion", {})
         if conclusion:
             self._add_content_slide(prs, conclusion, SlideType.summary)
 
-        # Save to storage
-        output_path = f"/storage/ppt/{meta.get('topic', 'lesson')}.pptx"
-        prs.save(output_path)
+        # Generate unique filename
+        job_id = str(uuid.uuid4())[:8]
+        topic = meta.get("topic", "lesson")
+        # Sanitize topic for filename
+        safe_topic = "".join(c if c.isalnum() or c in "-_" else "_" for c in topic)
 
-        return output_path
+        # Save to storage
+        output_path = PPT_DIR / f"{safe_topic}_{job_id}.pptx"
+        prs.save(str(output_path))
+
+        return str(output_path)
 
     def _add_title_slide(self, prs: Presentation, meta: dict):
         """Add title slide with lesson metadata."""
