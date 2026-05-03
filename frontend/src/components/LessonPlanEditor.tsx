@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { ChangeIndicator } from './ChangeIndicator';
 
 // Lesson Plan types (matching backend schema)
@@ -110,7 +110,8 @@ export function LessonPlanEditor({
   const [lesson, setLesson] = useState<LessonPlan>(deepClone(initialLesson));
   const [originalLesson] = useState<LessonPlan>(deepClone(initialLesson));
   const [editMode, setEditMode] = useState<'structured' | 'json'>('structured');
-  const [jsonText, setJsonText] = useState<string>(JSON.stringify(initialLesson, null, 2));
+  // Initialize JSON text from initial lesson (avoid setState in effect)
+  const [jsonText, setJsonText] = useState<string>(() => JSON.stringify(initialLesson, null, 2));
   const [isSaving, setIsSaving] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -120,12 +121,13 @@ export function LessonPlanEditor({
   const changes = detectChanges(originalLesson, lesson);
   const hasChanges = changes.meta || changes.sections.size > 0 || changes.summary;
 
-  // Sync JSON text when lesson changes in structured mode
-  useEffect(() => {
-    if (editMode === 'structured') {
+  // Update JSON text when switching to JSON mode (not in effect)
+  const handleModeSwitch = useCallback((mode: 'structured' | 'json') => {
+    if (mode === 'json') {
       setJsonText(JSON.stringify(lesson, null, 2));
     }
-  }, [lesson, editMode]);
+    setEditMode(mode);
+  }, [lesson]);
 
   // Handle JSON edit
   const handleJsonEdit = useCallback((text: string) => {
@@ -250,7 +252,7 @@ export function LessonPlanEditor({
         <h2 className="text-lg font-semibold text-gray-800">教案编辑</h2>
         <div className="flex gap-2">
           <button
-            onClick={() => setEditMode('structured')}
+            onClick={() => handleModeSwitch('structured')}
             className={`px-3 py-1 rounded text-sm ${
               editMode === 'structured'
                 ? 'bg-blue-600 text-white'
@@ -260,7 +262,7 @@ export function LessonPlanEditor({
             结构化
           </button>
           <button
-            onClick={() => setEditMode('json')}
+            onClick={() => handleModeSwitch('json')}
             className={`px-3 py-1 rounded text-sm ${
               editMode === 'json'
                 ? 'bg-blue-600 text-white'
