@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     app_name: str = "YaeTeaching API"
     debug: bool = False
 
+    # Storage
+    storage_path: str = "/tmp/yaeteaching"
+
     model_config = SettingsConfigDict(env_file=".env")
 
 

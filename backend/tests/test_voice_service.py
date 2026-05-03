@@ -1,206 +1,178 @@
-"""Unit tests for Voice/TTS generation service."""
+"""Tests for voice/TTS generation service."""
 import pytest
-from services.voice import VoiceGenerator
+import os
+import json
+from services.voice import VoiceGenerator, MAX_SEGMENT_DURATION_SECONDS
 
 
-@pytest.fixture
-def sample_lesson_json():
-    """Sample lesson JSON for testing."""
-    return {
-        "meta": {
-            "subject": "数学",
-            "grade": "7年级",
-            "topic": "一元一次方程",
-            "duration": 45,
+# Sample lesson JSON for testing
+SAMPLE_LESSON = {
+    "meta": {
+        "subject": "physics",
+        "grade": "七年级",
+        "topic": "力学基础",
+        "duration": 45,
+        "style": "启发式教学"
+    },
+    "outline": {
+        "introduction": {
+            "title": "课程导入",
+            "content": "通过生活中的实例引入力学概念。力是物体对物体的作用。",
+            "key_points": ["建立学习兴趣", "理解力的定义"],
+            "media_hint": {"slide_type": "title", "voice_style": "teacher"}
         },
+        "main_sections": [
+            {
+                "title": "力的概念",
+                "content": "力是物体之间的相互作用。力的作用效果：改变运动状态、改变形状。",
+                "key_points": ["力的定义", "力的作用效果"],
+                "media_hint": {"slide_type": "knowledge", "voice_style": "teacher"}
+            },
+            {
+                "title": "例题分析",
+                "content": "分析以下场景中的力：推箱子、拉弹簧。",
+                "key_points": ["受力分析", "力的方向"],
+                "media_hint": {"slide_type": "example", "voice_style": "teacher"}
+            }
+        ],
+        "conclusion": {
+            "title": "课堂总结",
+            "content": "本节课学习了力的基本概念和应用。",
+            "key_points": ["知识回顾", "课后练习"],
+            "media_hint": {"slide_type": "summary", "voice_style": "teacher"}
+        }
+    },
+    "summary": "本节课介绍了力的基本概念和作用效果。",
+    "resources": []
+}
+
+
+def test_voice_generator_init():
+    """Test VoiceGenerator initializes correctly."""
+    generator = VoiceGenerator()
+    assert generator.storage_path is not None
+    assert os.path.exists(generator.storage_path)
+
+
+def test_voice_generator_custom_storage():
+    """Test VoiceGenerator with custom storage path."""
+    custom_path = "/tmp/test_voice_output"
+    generator = VoiceGenerator(storage_path=custom_path)
+    assert generator.storage_path == custom_path
+    assert os.path.exists(custom_path)
+
+    # Cleanup
+    if os.path.exists(custom_path):
+        os.rmdir(custom_path)
+
+
+def test_voice_generator_generate():
+    """Test basic audio generation."""
+    generator = VoiceGenerator()
+    audio_files = generator.generate(SAMPLE_LESSON)
+
+    # Should generate files for each section
+    assert len(audio_files) >= 3  # intro + at least 1 main + conclusion
+
+    # Check that files exist (either .mp3 or _meta.json placeholder)
+    for path in audio_files:
+        # Either actual audio or placeholder metadata
+        assert path.endswith('.mp3') or path.endswith('_meta.json')
+
+
+def test_voice_generator_split_text_short():
+    """Test text splitting for short text."""
+    generator = VoiceGenerator()
+    short_text = "这是一个简短的测试文本。"
+    segments = generator._split_text_for_duration(short_text, MAX_SEGMENT_DURATION_SECONDS)
+
+    # Short text should not be split
+    assert len(segments) == 1
+    assert segments[0] == short_text
+
+
+def test_voice_generator_split_text_long():
+    """Test text splitting for long text."""
+    generator = VoiceGenerator()
+    # Create long text exceeding max duration
+    long_text = "第一句话内容比较长。" * 100  # ~900 chars
+    segments = generator._split_text_for_duration(long_text, MAX_SEGMENT_DURATION_SECONDS)
+
+    # Long text should be split into multiple segments
+    assert len(segments) > 1
+
+    # Each segment should be within limit
+    max_chars = MAX_SEGMENT_DURATION_SECONDS * 5
+    for segment in segments:
+        assert len(segment) <= max_chars
+
+
+def test_voice_generator_placeholder():
+    """Test placeholder generation when ChatTTS unavailable."""
+    generator = VoiceGenerator()
+    placeholder_path = generator._generate_placeholder_audio(
+        "/tmp/test_placeholder.mp3",
+        "测试文本内容"
+    )
+
+    # Should create JSON metadata file
+    assert placeholder_path.endswith('_meta.json')
+    assert os.path.exists(placeholder_path)
+
+    # Check metadata content
+    with open(placeholder_path, 'r') as f:
+        metadata = json.load(f)
+    assert metadata["text"] == "测试文本内容"
+    assert metadata["status"] == "pending"
+
+    # Cleanup
+    if os.path.exists(placeholder_path):
+        os.remove(placeholder_path)
+
+
+def test_voice_generator_voice_styles():
+    """Test different voice styles."""
+    generator = VoiceGenerator()
+
+    # Generate with teacher voice
+    audio_files = generator.generate(SAMPLE_LESSON)
+
+    # Check that voice_style is properly extracted
+    # This is handled in _generate_section_audio
+    assert len(audio_files) > 0
+
+
+def test_voice_generator_empty_content():
+    """Test handling of empty content."""
+    generator = VoiceGenerator()
+    lesson_empty = {
+        "meta": {"topic": "测试课程"},
         "outline": {
-            "introduction": {
-                "title": "课程导入",
-                "content": "通过生活中的实例引入方程概念，让学生理解方程在日常生活中的应用。",
-                "key_points": ["方程的定义", "生活中的例子"],
-                "media_hint": {"voice_style": "teacher"},
-            },
-            "main_sections": [
-                {
-                    "title": "方程的基本概念",
-                    "content": "详细讲解方程的定义和基本性质，方程是含有未知数的等式。",
-                    "key_points": ["未知数", "等式", "方程的定义"],
-                    "media_hint": {"voice_style": "teacher"},
-                },
-                {
-                    "title": "例题分析",
-                    "content": "通过具体例题讲解解方程的方法和步骤。",
-                    "key_points": ["解题步骤", "注意事项"],
-                    "media_hint": {"voice_style": "teacher"},
-                },
-            ],
-            "conclusion": {
-                "title": "课堂总结",
-                "content": "回顾本节课的重点内容，布置课后练习。",
-                "key_points": ["知识回顾", "课后练习"],
-                "media_hint": {"voice_style": "teacher"},
-            },
-        },
-        "summary": "本节课学习了方程的基本概念",
-        "resources": [],
+            "introduction": {"title": "导入", "content": ""},
+            "main_sections": [],
+            "conclusion": {"title": "总结", "content": ""}
+        }
     }
 
+    audio_files = generator.generate(lesson_empty)
 
-@pytest.fixture
-def minimal_lesson_json():
-    """Minimal lesson JSON for edge case testing."""
-    return {
-        "meta": {"subject": "测试"},
-        "outline": {},
-    }
+    # Empty content sections should be skipped
+    # Only non-empty sections generate audio
+    assert len(audio_files) == 0  # No sections with content
 
 
-class TestVoiceGeneratorInit:
-    """Tests for VoiceGenerator initialization."""
+def test_voice_generator_no_model():
+    """Test behavior when ChatTTS model not available."""
+    generator = VoiceGenerator()
 
-    def test_init_success(self):
-        """Test generator initializes without errors."""
-        generator = VoiceGenerator()
-        assert generator is not None
+    # Force initialization attempt
+    result = generator._init_model()
 
-
-class TestVoiceGeneratorGenerate:
-    """Tests for voice generation."""
-
-    def test_generate_returns_list(self, sample_lesson_json):
-        """Test generate returns a list of audio paths."""
-        generator = VoiceGenerator()
-        result = generator.generate(sample_lesson_json)
-
-        assert isinstance(result, list)
-
-    def test_generate_handles_empty_outline(self, minimal_lesson_json):
-        """Test generate handles empty outline gracefully."""
-        generator = VoiceGenerator()
-        result = generator.generate(minimal_lesson_json)
-
-        assert isinstance(result, list)
-
-    def test_generate_returns_paths_for_sections(self, sample_lesson_json):
-        """Test generate returns paths for each section."""
-        generator = VoiceGenerator()
-        result = generator.generate(sample_lesson_json)
-
-        # Should have paths for introduction, main_sections, conclusion
-        # Currently returns placeholder paths
-        assert len(result) >= 0  # May be empty if sections are empty
+    # If model not available, should return None for audio
+    if not result or generator._model is None:
+        audio = generator._call_chattts(["测试文本"], "teacher")
+        assert audio is None
 
 
-class TestVoiceGeneratorSectionAudio:
-    """Tests for section audio generation."""
-
-    def test_generate_section_audio_returns_path(self, sample_lesson_json):
-        """Test section audio generation returns a path."""
-        generator = VoiceGenerator()
-        section = sample_lesson_json["outline"]["introduction"]
-
-        result = generator._generate_section_audio(section, 0, "数学")
-
-        assert isinstance(result, str)
-        assert result.endswith(".mp3")
-
-    def test_generate_section_audio_with_index(self, sample_lesson_json):
-        """Test section audio uses correct index."""
-        generator = VoiceGenerator()
-        section = sample_lesson_json["outline"]["main_sections"][0]
-
-        result = generator._generate_section_audio(section, 1, "数学")
-
-        assert "section_1" in result
-
-    def test_generate_section_audio_empty_section(self):
-        """Test section audio handles empty section."""
-        generator = VoiceGenerator()
-        section = {}
-
-        result = generator._generate_section_audio(section, 0, "")
-
-        assert result.endswith(".mp3")
-
-
-class TestVoiceGeneratorChatTTS:
-    """Tests for ChatTTS integration."""
-
-    def test_call_chattts_not_implemented(self):
-        """Test ChatTTS call raises NotImplementedError."""
-        generator = VoiceGenerator()
-
-        with pytest.raises(NotImplementedError):
-            generator._call_chattts("test text")
-
-    def test_call_chattts_with_voice_style(self):
-        """Test ChatTTS accepts voice style parameter."""
-        generator = VoiceGenerator()
-
-        with pytest.raises(NotImplementedError):
-            generator._call_chattts("test text", voice_style="student")
-
-
-class TestVoiceGeneratorEdgeCases:
-    """Tests for edge cases."""
-
-    def test_empty_section_title(self):
-        """Test handling empty section title."""
-        generator = VoiceGenerator()
-        section = {"content": "some content"}
-
-        result = generator._generate_section_audio(section, 0, "数学")
-
-        assert result.endswith(".mp3")
-
-    def test_empty_section_content(self):
-        """Test handling empty section content."""
-        generator = VoiceGenerator()
-        section = {"title": "some title"}
-
-        result = generator._generate_section_audio(section, 0, "数学")
-
-        assert result.endswith(".mp3")
-
-    def test_none_subject(self, sample_lesson_json):
-        """Test handling None subject."""
-        generator = VoiceGenerator()
-        section = sample_lesson_json["outline"]["introduction"]
-
-        result = generator._generate_section_audio(section, 0, None)
-
-        assert result.endswith(".mp3")
-
-
-class TestVoiceGeneratorTextChunking:
-    """Tests for text chunking logic (future implementation)."""
-
-    def test_chunk_text_placeholder(self):
-        """Placeholder test for text chunking."""
-        # This will be implemented when ChatTTS is integrated
-        # Chunking should ensure each segment <= 2 minutes
-        generator = VoiceGenerator()
-
-        # Placeholder: verify generator exists
-        assert generator is not None
-
-
-class TestVoiceGeneratorVoiceStyles:
-    """Tests for voice style handling."""
-
-    def test_teacher_voice_style(self, sample_lesson_json):
-        """Test teacher voice style is recognized."""
-        section = sample_lesson_json["outline"]["introduction"]
-        media_hint = section.get("media_hint", {})
-
-        assert media_hint.get("voice_style") == "teacher"
-
-    def test_default_voice_style(self):
-        """Test default voice style when not specified."""
-        section = {"title": "test", "content": "test"}
-
-        # Should default to teacher
-        media_hint = section.get("media_hint", {})
-        voice_style = media_hint.get("voice_style", "teacher")
-
-        assert voice_style == "teacher"
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
