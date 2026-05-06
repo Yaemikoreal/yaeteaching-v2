@@ -34,10 +34,12 @@ class LessonSection(BaseModel):
 class LessonMeta(BaseModel):
     """Lesson metadata."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     subject: str
     grade: str
-    topic: str
-    duration: int
+    topic: str = Field(alias="title")
+    duration: int = Field(alias="duration_minutes")
     style: Optional[str] = None
     author: Optional[str] = None
 
@@ -72,8 +74,8 @@ class LessonJSON(BaseModel):
                 "meta": {
                     "subject": "数学",
                     "grade": "7年级",
-                    "topic": "一元一次方程",
-                    "duration": 45,
+                    "title": "一元一次方程",
+                    "duration_minutes": 45,
                     "style": "启发式教学"
                 },
                 "outline": {
