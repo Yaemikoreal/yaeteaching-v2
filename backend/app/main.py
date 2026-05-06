@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config.settings import settings
 from app.router import api_router
+from app.auth import auth_router
 from app.websocket import websocket_router
 
 
@@ -23,6 +24,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(api_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 app.include_router(websocket_router, prefix="/ws")
 
 

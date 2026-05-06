@@ -49,20 +49,30 @@ def _update_progress_sync(job_id: str, task_type: ProductType, status: TaskStatu
 
 @shared_task(bind=True)
 def start_generation_pipeline(self, job_id: str, request_data: dict):
-    """Main pipeline: generate lesson -> tts -> ppt -> video."""
+    """Main pipeline: generate lesson -> tts -> ppt -> video.
+
+    Four-stage task DAG:
+    1. lesson: LLM generates structured lesson plan JSON
+    2. tts: ChatTTS synthesizes audio per section
+    3. ppt: python-pptx generates slides from lesson
+    4. video: ffmpeg combines slides + audio into MP4
+    """
     # Step 1: Generate lesson plan
     lesson_json = generate_lesson_task(job_id, request_data)
 
     # Step 2: Generate TTS audio
+    audio_files = []
     if lesson_json:
-        generate_tts_task(job_id, lesson_json)
+        audio_files = generate_tts_task(job_id, lesson_json)
 
     # Step 3: Generate PPT
+    ppt_file = None
     if lesson_json:
-        generate_ppt_task(job_id, lesson_json)
+        ppt_file = generate_ppt_task(job_id, lesson_json)
 
-    # Step 4: Generate video (future)
-    # generate_video_task(job_id, lesson_json)
+    # Step 4: Generate video (combines lesson + audio + ppt)
+    if lesson_json and audio_files and ppt_file:
+        generate_video_task(job_id, lesson_json, audio_files, ppt_file)
 
 
 @shared_task(bind=True)
@@ -95,8 +105,12 @@ def generate_lesson_task(self, job_id: str, request_data: dict) -> dict:
 
 
 @shared_task(bind=True)
-def generate_tts_task(self, job_id: str, lesson_json: dict):
-    """Generate TTS audio from lesson content."""
+def generate_tts_task(self, job_id: str, lesson_json: dict) -> list:
+    """Generate TTS audio from lesson content.
+
+    Returns:
+        List of audio file paths for each section
+    """
     _update_progress_sync(
         job_id, ProductType.tts, TaskStatus.in_progress, 10,
         message="正在合成语音..."
@@ -105,7 +119,7 @@ def generate_tts_task(self, job_id: str, lesson_json: dict):
     try:
         from services.voice import VoiceGenerator
         generator = VoiceGenerator()
-        generator.generate(lesson_json)
+        audio_files = generator.generate(lesson_json)
 
         _update_progress_sync(
             job_id, ProductType.tts, TaskStatus.completed, 100,
@@ -113,16 +127,23 @@ def generate_tts_task(self, job_id: str, lesson_json: dict):
             download_url=f"/api/download/tts/{job_id}"
         )
 
+        return audio_files
+
     except Exception as e:
         _update_progress_sync(
             job_id, ProductType.tts, TaskStatus.failed, 0,
             error=str(e)
         )
+        return []
 
 
 @shared_task(bind=True)
-def generate_ppt_task(self, job_id: str, lesson_json: dict):
-    """Generate PPT from lesson content."""
+def generate_ppt_task(self, job_id: str, lesson_json: dict) -> str:
+    """Generate PPT from lesson content.
+
+    Returns:
+        Path to generated PPT file
+    """
     _update_progress_sync(
         job_id, ProductType.ppt, TaskStatus.in_progress, 10,
         message="正在生成 PPT..."
@@ -131,7 +152,7 @@ def generate_ppt_task(self, job_id: str, lesson_json: dict):
     try:
         from services.ppt import PPTGenerator
         generator = PPTGenerator()
-        generator.generate(lesson_json)
+        ppt_file = generator.generate(lesson_json)
 
         _update_progress_sync(
             job_id, ProductType.ppt, TaskStatus.completed, 100,
@@ -139,8 +160,48 @@ def generate_ppt_task(self, job_id: str, lesson_json: dict):
             download_url=f"/api/download/ppt/{job_id}"
         )
 
+        return ppt_file
+
     except Exception as e:
         _update_progress_sync(
             job_id, ProductType.ppt, TaskStatus.failed, 0,
             error=str(e)
         )
+        return None
+
+
+@shared_task(bind=True)
+def generate_video_task(self, job_id: str, lesson_json: dict,
+                       audio_files: list, ppt_file: str):
+    """Generate teaching video from lesson + audio + PPT.
+
+    Args:
+        job_id: Job identifier
+        lesson_json: Lesson plan JSON structure
+        audio_files: List of audio file paths
+        ppt_file: PPT file path
+    """
+    _update_progress_sync(
+        job_id, ProductType.video, TaskStatus.in_progress, 10,
+        message="正在合成视频..."
+    )
+
+    try:
+        from services.video import VideoGenerator
+        generator = VideoGenerator()
+        video_file = generator.generate(lesson_json, audio_files, ppt_file)
+
+        _update_progress_sync(
+            job_id, ProductType.video, TaskStatus.completed, 100,
+            message="视频合成完成",
+            download_url=f"/api/download/video/{job_id}"
+        )
+
+        return video_file
+
+    except Exception as e:
+        _update_progress_sync(
+            job_id, ProductType.video, TaskStatus.failed, 0,
+            error=str(e)
+        )
+        return None
