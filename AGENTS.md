@@ -30,7 +30,7 @@ yaeteaching/
 │   └── package.json
 ├── backend/          # Python/FastAPI 后端 (白厄)
 │   ├── app/          # FastAPI 应用
-│   ├── celery/       # Celery 任务
+│   ├── celery_tasks/  # Celery 任务
 │   ├── models/       # 数据模型
 │   ├── services/     # 业务逻辑
 │   └── tests/        # 测试文件
