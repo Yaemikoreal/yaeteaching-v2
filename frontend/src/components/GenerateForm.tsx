@@ -42,7 +42,7 @@ export function GenerateForm({ onSubmit, isLoading }: GenerateFormProps) {
         <div className="space-y-2">
           <label
             htmlFor="subject"
-            className="block text-sm font-medium text-gray-700"
+            className="block text-sm font-medium text-neutral-700"
           >
             学科
           </label>
@@ -50,7 +50,7 @@ export function GenerateForm({ onSubmit, isLoading }: GenerateFormProps) {
             id="subject"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-neutral-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
           >
             {SUBJECTS.map((s) => (
               <option key={s} value={s}>
@@ -63,7 +63,7 @@ export function GenerateForm({ onSubmit, isLoading }: GenerateFormProps) {
         <div className="space-y-2">
           <label
             htmlFor="grade"
-            className="block text-sm font-medium text-gray-700"
+            className="block text-sm font-medium text-neutral-700"
           >
             年级
           </label>
@@ -71,7 +71,7 @@ export function GenerateForm({ onSubmit, isLoading }: GenerateFormProps) {
             id="grade"
             value={grade}
             onChange={(e) => setGrade(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-neutral-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
           >
             {GRADES.map((g) => (
               <option key={g} value={g}>
@@ -84,7 +84,7 @@ export function GenerateForm({ onSubmit, isLoading }: GenerateFormProps) {
         <div className="space-y-2">
           <label
             htmlFor="duration"
-            className="block text-sm font-medium text-gray-700"
+            className="block text-sm font-medium text-neutral-700"
           >
             课时（分钟）
           </label>
@@ -95,14 +95,14 @@ export function GenerateForm({ onSubmit, isLoading }: GenerateFormProps) {
             max={120}
             value={duration}
             onChange={(e) => setDuration(Number(e.target.value))}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-neutral-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
           />
         </div>
 
         <div className="space-y-2">
           <label
             htmlFor="style"
-            className="block text-sm font-medium text-gray-700"
+            className="block text-sm font-medium text-neutral-700"
           >
             教学风格
           </label>
@@ -110,7 +110,7 @@ export function GenerateForm({ onSubmit, isLoading }: GenerateFormProps) {
             id="style"
             value={style}
             onChange={(e) => setStyle(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-neutral-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
           >
             {STYLES.map((s) => (
               <option key={s} value={s}>
@@ -124,7 +124,7 @@ export function GenerateForm({ onSubmit, isLoading }: GenerateFormProps) {
       <div className="space-y-2">
         <label
           htmlFor="topic"
-          className="block text-sm font-medium text-gray-700"
+          className="block text-sm font-medium text-neutral-700"
         >
           课题/主题
         </label>
@@ -134,14 +134,14 @@ export function GenerateForm({ onSubmit, isLoading }: GenerateFormProps) {
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
           placeholder="例如：力学入门、牛顿第一定律"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-neutral-900 placeholder-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
         />
       </div>
 
       <button
         type="submit"
         disabled={isLoading || !topic.trim()}
-        className="w-full rounded-lg bg-blue-600 px-4 py-3 text-white font-medium transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        className="w-full rounded-lg bg-primary-600 px-4 py-3 text-white font-medium transition-colors hover:bg-primary-700 disabled:bg-neutral-400 disabled:cursor-not-allowed"
       >
         {isLoading ? '生成中...' : '开始生成'}
       </button>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useReducer } from 'react';
+import { useEffect, useRef, useReducer, useCallback } from 'react';
 import type { JobStatus, ProgressMessage, TaskProgress } from '@/types';
 
 interface UseWebSocketOptions {
@@ -136,6 +136,19 @@ export function useWebSocket({
   });
 
   const wsRef = useRef<WebSocket | null>(null);
+  // Use ref to track current tasks for completion check without triggering re-render
+  const tasksRef = useRef<TaskProgress[]>(INITIAL_TASKS);
+  // Store callbacks in refs to avoid dependency changes
+  const onProgressRef = useRef(onProgress);
+  const onCompleteRef = useRef(onComplete);
+  const onErrorRef = useRef(onError);
+
+  // Update refs when callbacks change
+  useEffect(() => {
+    onProgressRef.current = onProgress;
+    onCompleteRef.current = onComplete;
+    onErrorRef.current = onError;
+  }, [onProgress, onComplete, onError]);
 
   useEffect(() => {
     if (!jobId || !WS_BASE_URL) {
@@ -162,21 +175,41 @@ export function useWebSocket({
 
         if (message.jobId !== jobId) return;
 
-        onProgress?.(message);
+        onProgressRef.current?.(message);
         dispatch({ type: 'PROGRESS', message });
 
-        // Check if all tasks are completed
-        if (message.status === 'completed' && state.status) {
-          const allCompleted = state.status.tasks.every(
+        // Update tasks ref for completion check
+        tasksRef.current = tasksRef.current.map((task) =>
+          task.type === message.taskType
+            ? {
+                ...task,
+                status: message.status,
+                progress: message.progress,
+                message: message.message,
+                error: message.error,
+                downloadUrl: message.downloadUrl,
+              }
+            : task
+        );
+
+        // Check if all tasks are completed using ref instead of state
+        if (message.status === 'completed') {
+          const allCompleted = tasksRef.current.every(
             (t) => t.status === 'completed' || t.status === 'failed'
           );
           if (allCompleted) {
-            onComplete?.({ ...state.status, status: 'completed' });
+            onCompleteRef.current?.({
+              jobId: message.jobId,
+              status: 'completed',
+              tasks: tasksRef.current,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            });
           }
         }
 
         if (message.status === 'failed' && message.error) {
-          onError?.(message.error);
+          onErrorRef.current?.(message.error);
         }
       } catch {
         console.error('Failed to parse WebSocket message');
@@ -185,7 +218,7 @@ export function useWebSocket({
 
     ws.onerror = () => {
       dispatch({ type: 'ERROR', error: 'WebSocket connection error' });
-      onError?.('WebSocket connection error');
+      onErrorRef.current?.('WebSocket connection error');
     };
 
     ws.onclose = () => {
@@ -196,7 +229,7 @@ export function useWebSocket({
       ws.close();
       wsRef.current = null;
     };
-  }, [jobId, onProgress, onComplete, onError, state.status]);
+  }, [jobId]); // Only re-run when jobId changes
 
   return {
     status: state.status,
