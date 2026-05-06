@@ -46,13 +46,13 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-full flex flex-col bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-4 py-4">
+    <div className="min-h-full flex flex-col bg-neutral-50">
+      <header className="bg-white border-b border-neutral-200 px-4 py-4">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-xl font-bold text-gray-900">
+          <h1 className="text-xl font-bold text-neutral-900">
             AI教案生成工作站
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-neutral-500 mt-1">
             输入提示词，自动生成教案、语音、PPT和视频
           </p>
         </div>
@@ -65,10 +65,10 @@ export default function Home() {
             <div className="flex items-center gap-2 text-sm">
               <div
                 className={`w-2 h-2 rounded-full ${
-                  isConnected ? 'bg-green-500' : 'bg-red-500'
+                  isConnected ? 'bg-success-500' : 'bg-error-500'
                 }`}
               />
-              <span className="text-gray-500">
+              <span className="text-neutral-500">
                 {isConnected ? '已连接' : '连接断开'}
               </span>
             </div>
@@ -76,12 +76,12 @@ export default function Home() {
 
           {/* Error messages */}
           {submitError && (
-            <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">
+            <div className="rounded-lg bg-error-50 p-4 text-sm text-error-600">
               {submitError}
             </div>
           )}
           {wsError && (
-            <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">
+            <div className="rounded-lg bg-error-50 p-4 text-sm text-error-600">
               WebSocket 错误: {wsError}
             </div>
           )}
@@ -89,7 +89,7 @@ export default function Home() {
           {/* Form */}
           {!jobId && (
             <div className="rounded-lg bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">
+              <h2 className="text-lg font-semibold text-neutral-800 mb-4">
                 生成教案
               </h2>
               <GenerateForm onSubmit={handleSubmit} isLoading={isSubmitting} />
@@ -125,7 +125,7 @@ export default function Home() {
             <div className="text-center">
               <button
                 onClick={handleReset}
-                className="rounded-lg bg-gray-100 px-6 py-2 text-gray-700 font-medium hover:bg-gray-200 transition-colors"
+                className="rounded-lg bg-neutral-100 px-6 py-2 text-neutral-700 font-medium hover:bg-neutral-200 transition-colors"
               >
                 开始新的生成
               </button>
@@ -134,8 +134,8 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="bg-white border-t border-gray-200 px-4 py-4">
-        <div className="max-w-7xl mx-auto text-center text-sm text-gray-500">
+      <footer className="bg-white border-t border-neutral-200 px-4 py-4">
+        <div className="max-w-7xl mx-auto text-center text-sm text-neutral-500">
           AI教案生成工作站 — Multica Platform
         </div>
       </footer>

@@ -249,14 +249,14 @@ export function LessonPlanEditor({
     <div className="w-full space-y-4">
       {/* Header with mode toggle */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-800">教案编辑</h2>
+        <h2 className="text-lg font-semibold text-neutral-800">教案编辑</h2>
         <div className="flex gap-2">
           <button
             onClick={() => handleModeSwitch('structured')}
             className={`px-3 py-1 rounded text-sm ${
               editMode === 'structured'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-primary-600 text-white'
+                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
             }`}
           >
             结构化
@@ -265,8 +265,8 @@ export function LessonPlanEditor({
             onClick={() => handleModeSwitch('json')}
             className={`px-3 py-1 rounded text-sm ${
               editMode === 'json'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-primary-600 text-white'
+                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
             }`}
           >
             JSON
@@ -281,61 +281,61 @@ export function LessonPlanEditor({
 
       {/* Error messages */}
       {saveError && (
-        <div className="rounded bg-red-50 p-3 text-sm text-red-600">
+        <div className="rounded bg-error-50 p-3 text-sm text-error-600">
           {saveError}
         </div>
       )}
       {regenerateError && (
-        <div className="rounded bg-red-50 p-3 text-sm text-red-600">
+        <div className="rounded bg-error-50 p-3 text-sm text-error-600">
           {regenerateError}
         </div>
       )}
 
       {/* Editor content */}
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="rounded-lg border border-neutral-200 bg-white p-4">
         {editMode === 'structured' ? (
           <div className="space-y-4">
             {/* Meta section */}
-            <div className={`border-b pb-4 ${changes.meta ? 'bg-yellow-50 -mx-4 px-4' : ''}`}>
+            <div className={`border-b pb-4 ${changes.meta ? 'bg-warning-50 -mx-4 px-4' : ''}`}>
               <h3 className="text-md font-semibold mb-2">
                 基本信息
-                {changes.meta && <span className="text-xs text-yellow-600 ml-2">(已修改)</span>}
+                {changes.meta && <span className="text-xs text-warning-600 ml-2">(已修改)</span>}
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm text-gray-500 mb-1">标题</label>
+                  <label className="block text-sm text-neutral-500 mb-1">标题</label>
                   <input
                     type="text"
                     value={lesson.meta.title}
                     onChange={(e) => updateMeta('title', e.target.value)}
-                    className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm"
+                    className="w-full rounded border border-neutral-300 px-3 py-1.5 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-500 mb-1">学科</label>
+                  <label className="block text-sm text-neutral-500 mb-1">学科</label>
                   <input
                     type="text"
                     value={lesson.meta.subject}
                     onChange={(e) => updateMeta('subject', e.target.value)}
-                    className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm"
+                    className="w-full rounded border border-neutral-300 px-3 py-1.5 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-500 mb-1">年级</label>
+                  <label className="block text-sm text-neutral-500 mb-1">年级</label>
                   <input
                     type="text"
                     value={lesson.meta.grade}
                     onChange={(e) => updateMeta('grade', e.target.value)}
-                    className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm"
+                    className="w-full rounded border border-neutral-300 px-3 py-1.5 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-500 mb-1">时长(分钟)</label>
+                  <label className="block text-sm text-neutral-500 mb-1">时长(分钟)</label>
                   <input
                     type="number"
                     value={lesson.meta.duration_minutes}
                     onChange={(e) => updateMeta('duration_minutes', parseInt(e.target.value) || 0)}
-                    className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm"
+                    className="w-full rounded border border-neutral-300 px-3 py-1.5 text-sm"
                   />
                 </div>
               </div>
@@ -349,52 +349,52 @@ export function LessonPlanEditor({
                   key={section.section_id}
                   className={`border rounded p-3 ${
                     changes.sections.has(section.section_id)
-                      ? 'border-yellow-400 bg-yellow-50'
-                      : 'border-gray-200'
+                      ? 'border-warning-400 bg-warning-50'
+                      : 'border-neutral-200'
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-sm font-medium text-gray-500">
+                    <span className="text-sm font-medium text-neutral-500">
                       {section.section_id}.
                     </span>
                     <input
                       type="text"
                       value={section.title}
                       onChange={(e) => updateSection(section.section_id, 'title', e.target.value)}
-                      className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm font-medium"
+                      className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm font-medium"
                     />
                     {changes.sections.has(section.section_id) && (
-                      <span className="text-xs text-yellow-600">(已修改)</span>
+                      <span className="text-xs text-warning-600">(已修改)</span>
                     )}
                   </div>
                   <textarea
                     value={section.content}
                     onChange={(e) => updateSection(section.section_id, 'content', e.target.value)}
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm min-h-20"
+                    className="w-full rounded border border-neutral-300 px-2 py-1 text-sm min-h-20"
                     placeholder="章节内容"
                   />
                   <div className="mt-2 grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">教学要点</label>
+                      <label className="block text-xs text-neutral-500 mb-1">教学要点</label>
                       <textarea
                         value={section.teaching_points.join('\n')}
                         onChange={(e) => updateTeachingPoints(
                           section.section_id,
                           e.target.value.split('\n').filter(Boolean)
                         )}
-                        className="w-full rounded border border-gray-300 px-2 py-1 text-xs"
+                        className="w-full rounded border border-neutral-300 px-2 py-1 text-xs"
                         placeholder="每行一个要点"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">例子</label>
+                      <label className="block text-xs text-neutral-500 mb-1">例子</label>
                       <textarea
                         value={section.examples.join('\n')}
                         onChange={(e) => updateExamples(
                           section.section_id,
                           e.target.value.split('\n').filter(Boolean)
                         )}
-                        className="w-full rounded border border-gray-300 px-2 py-1 text-xs"
+                        className="w-full rounded border border-neutral-300 px-2 py-1 text-xs"
                         placeholder="每行一个例子"
                       />
                     </div>
@@ -404,37 +404,37 @@ export function LessonPlanEditor({
             </div>
 
             {/* Summary section */}
-            <div className={`border-t pt-4 ${changes.summary ? 'bg-yellow-50 -mx-4 px-4' : ''}`}>
+            <div className={`border-t pt-4 ${changes.summary ? 'bg-warning-50 -mx-4 px-4' : ''}`}>
               <h3 className="text-md font-semibold mb-2">
                 总结
-                {changes.summary && <span className="text-xs text-yellow-600 ml-2">(已修改)</span>}
+                {changes.summary && <span className="text-xs text-warning-600 ml-2">(已修改)</span>}
               </h3>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm text-gray-500 mb-1">核心要点</label>
+                  <label className="block text-sm text-neutral-500 mb-1">核心要点</label>
                   <textarea
                     value={lesson.summary.key_points.join('\n')}
                     onChange={(e) => updateSummary('key_points', e.target.value.split('\n').filter(Boolean))}
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                    className="w-full rounded border border-neutral-300 px-2 py-1 text-sm"
                     placeholder="每行一个要点"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-500 mb-1">作业</label>
+                  <label className="block text-sm text-neutral-500 mb-1">作业</label>
                   <input
                     type="text"
                     value={lesson.summary.homework}
                     onChange={(e) => updateSummary('homework', e.target.value)}
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                    className="w-full rounded border border-neutral-300 px-2 py-1 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-500 mb-1">下节预告</label>
+                  <label className="block text-sm text-neutral-500 mb-1">下节预告</label>
                   <input
                     type="text"
                     value={lesson.summary.next_preview}
                     onChange={(e) => updateSummary('next_preview', e.target.value)}
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                    className="w-full rounded border border-neutral-300 px-2 py-1 text-sm"
                   />
                 </div>
               </div>
@@ -445,7 +445,7 @@ export function LessonPlanEditor({
           <textarea
             value={jsonText}
             onChange={(e) => handleJsonEdit(e.target.value)}
-            className="w-full min-h-96 rounded border border-gray-300 px-3 py-2 font-mono text-sm"
+            className="w-full min-h-96 rounded border border-neutral-300 px-3 py-2 font-mono text-sm"
             spellCheck={false}
           />
         )}
@@ -459,8 +459,8 @@ export function LessonPlanEditor({
             disabled={isSaving || !hasChanges}
             className={`px-4 py-2 rounded font-medium ${
               isSaving || !hasChanges
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
+                ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                : 'bg-primary-600 text-white hover:bg-primary-700'
             }`}
           >
             {isSaving ? '保存中...' : '保存'}
@@ -471,8 +471,8 @@ export function LessonPlanEditor({
               disabled={isRegenerating}
               className={`px-4 py-2 rounded font-medium ${
                 isRegenerating
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-green-600 text-white hover:bg-green-700'
+                  ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                  : 'bg-success-600 text-white hover:bg-success-700'
               }`}
             >
               {isRegenerating ? '重新生成中...' : `重新生成 (${changes.sections.size} 章节)`}
