@@ -37,7 +37,7 @@ async def generate_lesson_plan(request: GenerateRequest):
 
     # Trigger Celery task for async processing
     try:
-        from celery.tasks import start_generation_pipeline
+        from celery_tasks.tasks import start_generation_pipeline
         start_generation_pipeline.delay(job_id, request.model_dump())
     except Exception as e:
         # If Celery is not available, log the error but don't fail the request
