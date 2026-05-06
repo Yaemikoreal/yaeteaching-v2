@@ -10,9 +10,9 @@ backend/
 │   ├── main.py       # Entry point
 │   ├── router.py     # API routes
 │   └── websocket.py  # WebSocket handlers
-├── celery/           # Async task workers
-│   ├── tasks.py      # Task definitions
-│   └── config.py     # Celery config
+├── celery_tasks/      # Async task workers
+│   ├── tasks.py       # Task definitions
+│   └── config.py      # Celery config
 ├── models/           # Pydantic data models
 │   ├── lesson.py     # Lesson schema
 │   ├── job.py        # Job status schema

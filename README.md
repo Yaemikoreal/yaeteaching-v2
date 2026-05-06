@@ -93,7 +93,7 @@ yaeteaching/
 │   │   ├── lesson.py            # 教案 JSON Schema
 │   │   ├── job.py               # 任务状态模型
 │   │   ├── request.py           # 请求/响应模型
-│   ├── celery/
+│   ├── celery_tasks/
 │   │   ├── tasks.py             # Celery 异步任务
 │   │   ├── config.py            # Celery 配置
 │   ├── config/
@@ -161,7 +161,7 @@ pip install -r requirements.txt
 redis-server
 
 # 启动 Celery Worker
-celery -A celery.tasks worker --loglevel=info
+celery -A celery_tasks.tasks worker --loglevel=info
 
 # 启动 FastAPI
 uvicorn app.main:app --reload --port 8000
