@@ -6,10 +6,10 @@ import { ChangeIndicator } from './ChangeIndicator';
 // Lesson Plan types (matching backend schema)
 export interface LessonPlan {
   meta: {
-    title: string;
+    topic: string;
     subject: string;
     grade: string;
-    duration_minutes: number;
+    duration: number;
     style?: string;
   };
   outline: Array<{
@@ -65,10 +65,10 @@ function detectChanges(original: LessonPlan, edited: LessonPlan): ChangedSection
 
   // Check meta
   if (
-    original.meta.title !== edited.meta.title ||
+    original.meta.topic !== edited.meta.topic ||
     original.meta.subject !== edited.meta.subject ||
     original.meta.grade !== edited.meta.grade ||
-    original.meta.duration_minutes !== edited.meta.duration_minutes
+    original.meta.duration !== edited.meta.duration
   ) {
     changes.meta = true;
   }
@@ -204,7 +204,7 @@ export function LessonPlanEditor({
 
   // Update meta
   const updateMeta = useCallback((
-    field: 'title' | 'subject' | 'grade' | 'duration_minutes',
+    field: 'topic' | 'subject' | 'grade' | 'duration',
     value: string | number
   ) => {
     setLesson(prev => ({
@@ -303,11 +303,11 @@ export function LessonPlanEditor({
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm text-gray-500 mb-1">标题</label>
+                  <label className="block text-sm text-gray-500 mb-1">主题</label>
                   <input
                     type="text"
-                    value={lesson.meta.title}
-                    onChange={(e) => updateMeta('title', e.target.value)}
+                    value={lesson.meta.topic}
+                    onChange={(e) => updateMeta('topic', e.target.value)}
                     className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm"
                   />
                 </div>
@@ -333,8 +333,8 @@ export function LessonPlanEditor({
                   <label className="block text-sm text-gray-500 mb-1">时长(分钟)</label>
                   <input
                     type="number"
-                    value={lesson.meta.duration_minutes}
-                    onChange={(e) => updateMeta('duration_minutes', parseInt(e.target.value) || 0)}
+                    value={lesson.meta.duration}
+                    onChange={(e) => updateMeta('duration', parseInt(e.target.value) || 0)}
                     className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm"
                   />
                 </div>

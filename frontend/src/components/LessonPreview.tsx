@@ -9,10 +9,11 @@ interface LessonPreviewProps {
 
 interface LessonPlan {
   meta: {
-    title: string;
+    topic: string;
     subject: string;
     grade: string;
-    duration_minutes: number;
+    duration: number;
+    style?: string;
   };
   outline: Array<{
     section_id: number;
@@ -105,11 +106,11 @@ export function LessonPreview({ downloadUrl }: LessonPreviewProps) {
       <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-4">
         {/* Meta info */}
         <div className="border-b border-gray-100 pb-3">
-          <h3 className="text-xl font-bold text-gray-900">{lesson.meta.title}</h3>
+          <h3 className="text-xl font-bold text-gray-900">{lesson.meta.topic}</h3>
           <div className="mt-2 flex gap-3 text-sm text-gray-500">
             <span>{lesson.meta.subject}</span>
             <span>{lesson.meta.grade}</span>
-            <span>{lesson.meta.duration_minutes}分钟</span>
+            <span>{lesson.meta.duration}分钟</span>
           </div>
         </div>
 
