@@ -1,5 +1,21 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Environment Configuration
+
+Before running the frontend, you need to configure the backend API URL:
+
+1. Copy the example environment file:
+   ```bash
+   cp .env.local.example .env.local
+   ```
+
+2. The default configuration connects to the local FastAPI backend:
+   ```
+   NEXT_PUBLIC_API_URL=http://localhost:8000
+   ```
+
+3. For production deployment, update the URL to your deployed backend.
+
 ## Getting Started
 
 First, run the development server:

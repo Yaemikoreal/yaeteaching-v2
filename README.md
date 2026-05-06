@@ -147,6 +147,10 @@ yaeteaching/
 ```bash
 cd frontend
 npm install
+
+# 配置环境变量（连接后端 API）
+cp .env.local.example .env.local
+
 npm run dev
 # 访问 http://localhost:3000
 ```
@@ -171,6 +175,9 @@ uvicorn app.main:app --reload --port 8000
 ### 环境变量
 
 ```bash
+# frontend/.env.local
+NEXT_PUBLIC_API_URL=http://localhost:8000
+
 # backend/.env
 DEEPSEEK_API_KEY=your_api_key
 REDIS_URL=redis://localhost:6379/0
