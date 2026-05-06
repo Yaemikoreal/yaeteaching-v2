@@ -86,3 +86,36 @@ export interface SectionRegenerationStatus {
   progress: number;
   error?: string;
 }
+
+// 历史记录类型
+export interface HistoryItem {
+  id: string;
+  jobId: string;
+  topic: string;
+  subject: string;
+  grade: string;
+  duration: number;
+  createdAt: string;
+  updatedAt: string;
+  status: TaskStatus;
+  starred: boolean;
+}
+
+// 历史列表请求参数
+export interface HistoryListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  startDate?: string;
+  endDate?: string;
+  starred?: boolean;
+}
+
+// 历史列表响应
+export interface HistoryListResponse {
+  items: HistoryItem[];
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+}

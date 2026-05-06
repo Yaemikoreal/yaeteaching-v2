@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import Link from 'next/link';
 import {
   GenerateForm,
   ProgressDisplay,
@@ -48,13 +49,21 @@ export default function Home() {
   return (
     <div className="min-h-full flex flex-col bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-xl font-bold text-gray-900">
-            AI教案生成工作站
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            输入提示词，自动生成教案、语音、PPT和视频
-          </p>
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">
+              AI教案生成工作站
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              输入提示词，自动生成教案、语音、PPT和视频
+            </p>
+          </div>
+          <Link
+            href="/history"
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+          >
+            历史记录
+          </Link>
         </div>
       </header>
 
