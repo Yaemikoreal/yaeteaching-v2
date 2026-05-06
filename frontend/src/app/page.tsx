@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   GenerateForm,
   ProgressDisplay,
@@ -8,6 +8,7 @@ import {
   LessonPreview,
 } from '@/components';
 import { useWebSocket } from '@/hooks';
+import { useAuthStore } from '@/store';
 import { generateLessonPlan } from '@/lib/api';
 import type { GenerateRequest, ProgressMessage } from '@/types';
 
@@ -15,6 +16,12 @@ export default function Home() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const { isAuthenticated, user, logout, hydrate } = useAuthStore();
+
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
 
   const handleProgress = useCallback((message: ProgressMessage) => {
     console.log('Progress update:', message);
@@ -48,13 +55,37 @@ export default function Home() {
   return (
     <div className="min-h-full flex flex-col bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-xl font-bold text-gray-900">
-            AI教案生成工作站
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            输入提示词，自动生成教案、语音、PPT和视频
-          </p>
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">
+              AI教案生成工作站
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              输入提示词，自动生成教案、语音、PPT和视频
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            {isAuthenticated ? (
+              <>
+                <span className="text-sm text-gray-600">
+                  {user?.name || user?.email}
+                </span>
+                <button
+                  onClick={() => logout()}
+                  className="rounded-lg bg-gray-100 px-4 py-2 text-gray-700 font-medium hover:bg-gray-200 transition-colors"
+                >
+                  登出
+                </button>
+              </>
+            ) : (
+              <a
+                href="/login"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-white font-medium hover:bg-blue-700 transition-colors"
+              >
+                登录
+              </a>
+            )}
+          </div>
         </div>
       </header>
 

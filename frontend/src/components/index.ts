@@ -7,3 +7,5 @@ export type { LessonPlan, ChangedSections } from './LessonPlanEditor';
 export { ChangeIndicator } from './ChangeIndicator';
 export { VersionHistory } from './VersionHistory';
 export { RegenerationProgress } from './RegenerationProgress';
+export { LoginForm } from './LoginForm';
+export { RegisterForm } from './RegisterForm';
