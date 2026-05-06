@@ -91,7 +91,7 @@ export function GenerateForm({ onSubmit, isLoading }: GenerateFormProps) {
           <input
             id="duration"
             type="number"
-            min={10}
+            min={15}
             max={120}
             value={duration}
             onChange={(e) => setDuration(Number(e.target.value))}
