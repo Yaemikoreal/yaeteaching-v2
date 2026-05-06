@@ -38,6 +38,7 @@ class JobStatus(BaseModel):
     """Overall job status."""
 
     job_id: str
+    user_id: Optional[str] = None  # 白厄: associate job with user
     status: TaskStatus = TaskStatus.pending
     tasks: List[TaskProgress] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.utcnow)
